@@ -29,6 +29,26 @@ The first jobs I want to get right:
 Every job needs clear permissions, useful errors, and evidence you can check.
 Box AI and enterprise administration need their own access and capability checks.
 
+## Start with one task. Tell us how it went.
+
+While the connector is being built, [review the getting-started plan](ROADMAP.md)
+and pick a task you would actually use. Tell us what would help you get from
+connecting Box to your first useful result.
+
+[Review the plan](ROADMAP.md) · [Share feedback](https://github.com/danieloleary/box-for-muse/issues/new/choose)
+
+Once a tested installable release is available, try one starter task and check the
+answer against its source. Was setup clear? Did you get the right files? What
+needed fixing? Share the task, expected result, and what happened using fictional
+or sanitized examples. Never include credentials or private Box content.
+
+If this project is useful to you, [star it on GitHub](https://github.com/danieloleary/box-for-muse)
+so you can find it again and help others discover it.
+
+Connect with me on [LinkedIn](https://www.linkedin.com/in/danieloleary/) or
+[X (@danieloleary)](https://x.com/danieloleary). I'd love to hear what you build.
+You can also visit [O'Leary Good Company](https://olearygood.com/).
+
 ## Bring a real problem
 
 [Open an issue](https://github.com/danieloleary/box-for-muse/issues/new/choose).
@@ -39,7 +59,9 @@ Found a bad assumption or a better approach? Send a correction or pull request.
 Please keep customer files, credentials, and private logs out of public contributions.
 
 - [Research and sources](research/SOURCES.md): what Aaron Levie said, what we inferred, and what still needs checking.
-- [Build roadmap](ROADMAP.md): what has to work before release.
+- [Build roadmap](ROADMAP.md): the onboarding-first plan and release gates.
+- [Delivery backlog](BACKLOG.md): priorities and acceptance criteria.
+- [Agent comparison](research/COMPARISON.md): Grok Bot, Codex, and Box research.
 - [Contributing](CONTRIBUTING.md): how to help.
 - [Keeping it current](MAINTENANCE.md): how changes get reviewed.
 - [Writing and demo copy](COPY.md): how this project should sound.

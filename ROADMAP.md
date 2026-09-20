@@ -4,6 +4,33 @@ Mission: built with love by Dan, available for everyone to use and improve.
 The implementation goal is a reliable Box connector for Muse, with reusable
 operation contracts for other agents. This public repository begins with research.
 
+## Product direction
+
+Help people connect Box to Muse and complete a useful first task with minimal
+setup friction. Then introduce deeper agent workflows. The 50-use-case catalog
+is an exploration library, not the onboarding checklist.
+
+The intended journey is:
+
+1. **Connect Box:** explain prerequisites and requested access, complete the
+   supported authorization flow, and verify the connected account.
+2. **Try a first task:** find project files, summarize a document with its source,
+   or compare two documents. Provide copyable prompts and expected results.
+3. **Do more:** save a brief, review extracted metadata, prepare an RFP response,
+   and monitor a project folder as those capabilities pass their tests.
+4. **Make it yours:** reuse workflows, troubleshoot problems, and contribute a
+   fictional example or improvement.
+
+Measure setup completion, time to the first verified result, manual interventions,
+and recovery from failed connection or missing access. Establish a baseline with
+fresh-user trials before publishing speed claims.
+
+See the [delivery backlog](BACKLOG.md) for acceptance criteria and the
+[comparison research](research/COMPARISON.md) for the rationale. The priorities
+below do not change the stable IDs or imply implementation of the catalog.
+
+## Delivery gates
+
 1. **Community foundation:** publish the 50-use-case catalog, sources, contribution
    forms and a reproducible catalog check. Status: prepared.
 2. **Working core:** user OAuth; identity, search, browse, read, compare and save;

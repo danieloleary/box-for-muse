@@ -3,7 +3,8 @@
 Review weekly and before each connector release:
 
 1. Search public posts by @levie for enterprise agents, Box, permissions, metadata,
-   research and continuous work. Check new Box API/changelog documentation too.
+   research and continuous work. Check new Box API/changelog documentation too. Review official Grok Bot and
+   Codex changes against research/COMPARISON.md and the onboarding backlog.
 2. Compare findings to research/SOURCES.md and the stable use-case IDs. Record
    original URL, read date, retrieval quality and a concise paraphrase.
 3. Prepare a focused update with changed assumptions, affected cases and new tests.

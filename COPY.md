@@ -28,18 +28,33 @@ number of working jobs and the evidence behind them.
 
 ## Demo site copy direction
 
-Proposed headline, for use once the core workflow is verified:
+Lead the page through Connect Box, Try a first task, Do more, and Make it yours.
+The first promise is a useful first result with minimal setup friction. Deeper
+workflows explain why someone would keep using it.
 
-> Put your Box files to work with Muse.
+Proposed launch copy, only after the supported setup and first tasks are verified:
 
-Proposed supporting copy, subject to the same gate:
-
-> Find the right document, answer with sources, and save the result back to Box.
+> Your Box files. Now working with Muse.
+>
+> Connect your account, find what you need, and put your documents to work.
+>
 > Built with love by Dan O'Leary, a Box and Meta alumnus.
+> Open source and community maintained.
 
-Until an installable release exists, use “Follow the build” and “Explore the use
-cases” as actions. Add installation language only when the instructions work.
-Keep the independent community-project disclosure nearby.
+Keep the independent community-project disclosure nearby. At launch, the primary
+button is “Get started” and the secondary link is “Explore what you can do.” Until
+an installable release exists, keep “Follow the build” and “Explore the use cases.”
+
+Provide three copyable starter prompts once tested:
+
+- “Find my files about [project].”
+- “Summarize this document and link to the source.”
+- “Compare these two documents and explain what changed.”
+
+Explain how to select the documents in the verified Muse flow. Label deeper
+capabilities as tested, experimental, or planned. Do not promise a setup time
+until fresh-user trials provide evidence. Link the full catalog as an exploration
+library, with a handful of proven tasks up front.
 
 ## Screenshots and video
 
@@ -50,3 +65,26 @@ out of the frame. Label time cuts instead of implying an edited demo is real-tim
 Narration should explain the decision that matters: why this proposal is the
 approved one, what the conflicting draft says, or where the brief was saved.
 Acknowledge missing evidence directly. Give viewers a useful next action.
+
+## Invitation to start and review
+
+Use a visible invitation near the starter tasks and at the end of the page:
+
+> Start with one task. Tell me how it went.
+>
+> Try a search, check a summary against its source, or compare two documents.
+> Tell me what worked, what was confusing, and what you want to do next.
+
+Gate “Try it” and “Get started” on a tested installable release. Before release,
+invite people to review the plan and share their use case. Link feedback to the
+GitHub issue chooser. Ask for honest results, not a positive rating. Offer a
+GitHub star as an optional way to support the project.
+
+Use Dan's confirmed profile links beside the community invitation and in the
+site footer: [LinkedIn](https://www.linkedin.com/in/danieloleary/),
+[X (@danieloleary)](https://x.com/danieloleary), and
+[O'Leary Good Company](https://olearygood.com/).
+
+Suggested invitation: "Connect with me on LinkedIn or X. I'd love to hear what
+you build."
+Keep feedback instructions clear about excluding credentials and private files.
