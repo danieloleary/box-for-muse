@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512" role="img" aria-labelledby="title desc">
+<title id="title">Box for Muse community icon draft</title>
+<desc id="desc">An original pale folder with a conversation bubble on a dark teal rounded square. Independent community design, not a Box or Meta logo.</desc>
+<rect width="512" height="512" rx="112" fill="#123F46"/>
+<path d="M90 164a28 28 0 0 1 28-28h95l33 38h148a28 28 0 0 1 28 28v166a28 28 0 0 1-28 28H118a28 28 0 0 1-28-28Z" fill="#D6F1E7"/>
+<path d="M117 211h278v139a20 20 0 0 1-20 20H137a20 20 0 0 1-20-20Z" fill="#F7FCF9"/>
+<path d="M200 228h146a28 28 0 0 1 28 28v45a28 28 0 0 1-28 28h-67l-49 34v-34h-30a28 28 0 0 1-28-28v-45a28 28 0 0 1 28-28Z" fill="#147E83"/>
+<circle cx="226" cy="279" r="10" fill="#F7FCF9"/>
+<circle cx="273" cy="279" r="10" fill="#F7FCF9"/>
+<circle cx="320" cy="279" r="10" fill="#F7FCF9"/>
+</svg>

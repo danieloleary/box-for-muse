@@ -19,7 +19,9 @@ A feature proposal must include a failure case as well as a happy path. Use
 synthetic documents. No private data, tokens, client secrets, callback payloads
 or personal account identifiers in issues, tests or screenshots.
 
-Contributions use the repository's MIT license. Be respectful, explain tradeoffs,
+Contributions to new connector code, tests, and release documentation use Apache
+2.0. Existing MIT-licensed planning and catalog material retains MIT; see
+[licensing](docs/licensing.md). Be respectful, explain tradeoffs,
 and keep claims tied to evidence. Maintainer review is required before release;
 a merged research proposal is not a tested connector capability.
 

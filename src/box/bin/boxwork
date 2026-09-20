@@ -1,0 +1,108 @@
+#!/usr/bin/env python3
+"""Bounded enterprise workflows over the Box connector (read-only).
+
+  boxwork gather-customer-files --folder-id ID --customer NAME
+      [--alias ALT ...] [--case CASE ...] [--customer NAME ...]
+  boxwork review-contracts --folder-id ID --year YYYY [--max-files N]
+
+Alias alternatives are OR within a customer; when a customer has both alias
+and case constraints, a file must match both with word boundaries. Ambiguous
+candidates are reported separately, never confirmed. No writes, no uploads.
+"""
+
+from __future__ import annotations
+
+import argparse
+import json
+import os
+import sys
+
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+import workflows
+
+BOX_BIN = os.path.join(os.path.dirname(os.path.abspath(__file__)), "box")
+
+
+class _Token(argparse.Action):
+    """Collect --customer/--alias/--case in command-line order."""
+
+    def __call__(self, parser, ns, values, option_string=None):
+        tokens = getattr(ns, "tokens", None)
+        if tokens is None:
+            tokens = []
+            setattr(ns, "tokens", tokens)
+        tokens.append((self.dest, values))
+
+
+def cmd_gather(args) -> int:
+    cli = workflows.load_cli(BOX_BIN)
+    customers, problem = workflows._parse_customer_tokens(
+        getattr(args, "tokens", []))
+    if problem:
+        print(json.dumps({"ok": False, "hint": problem}, indent=2))
+        return 1
+    result = workflows.gather_customer_files(
+        cli, args.folder_id, customers,
+        max_folders=args.max_folders, max_pages=args.max_pages,
+        max_files=args.max_files, max_content_reads=args.max_content_reads,
+        include_evidence=getattr(args, "include_evidence", False))
+    print(json.dumps(result, indent=2))
+    if not result.get("ok"):
+        return 1
+    return 0 if result["coverage"].get("complete") else 2
+
+
+def cmd_review(args) -> int:
+    cli = workflows.load_cli(BOX_BIN)
+    result = workflows.review_contracts(cli, args.folder_id, args.year,
+                                        max_files=args.max_files,
+                                        max_folders=args.max_folders,
+                                        max_pages=args.max_pages)
+    print(json.dumps(result, indent=2))
+    if not result.get("ok"):
+        return 1
+    needs = len(result.get("needs_review", [])) + len(result.get("unreadable", []))
+    if (not result["coverage"].get("complete") or needs
+            or (result.get("evidence_only") and not result.get("assessment_complete"))):
+        return 2
+    return 0
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(prog="boxwork",
+                                     description="Read-only Box enterprise workflows.")
+    sub = parser.add_subparsers(dest="command", required=True)
+
+    p = sub.add_parser("gather-customer-files",
+                       help="Collect customer files for a case/meeting from an explicit folder tree.")
+    p.add_argument("--folder-id", required=True)
+    p.add_argument("--customer", action=_Token, default=None, metavar="NAME",
+                   help="start a customer group; repeatable")
+    p.add_argument("--alias", action=_Token, default=None, metavar="ALT",
+                   help="alias alternative for the current customer; repeatable")
+    p.add_argument("--case", action=_Token, default=None, metavar="CASE",
+                   help="case ID constraint for the current customer; repeatable")
+    p.add_argument("--max-folders", type=int, default=workflows.DEFAULT_MAX_FOLDERS)
+    p.add_argument("--max-pages", type=int, default=workflows.DEFAULT_MAX_PAGES)
+    p.add_argument("--max-files", type=int, default=workflows.DEFAULT_MAX_FILES)
+    p.add_argument("--max-content-reads", type=int,
+                   default=workflows.DEFAULT_MAX_CONTENT_READS)
+    p.add_argument("--include-evidence", action="store_true",
+                   help="Return bounded verified text from existing gather reads; no extra downloads")
+    p.set_defaults(func=cmd_gather)
+
+    p = sub.add_parser("review-contracts",
+                       help="Gather candidate contract-date evidence for review; never determine legal expiration.")
+    p.add_argument("--folder-id", required=True)
+    p.add_argument("--year", required=True)
+    p.add_argument("--max-files", type=int, default=workflows.DEFAULT_MAX_FILES)
+    p.add_argument("--max-folders", type=int, default=workflows.DEFAULT_MAX_FOLDERS)
+    p.add_argument("--max-pages", type=int, default=workflows.DEFAULT_MAX_PAGES)
+    p.set_defaults(func=cmd_review)
+
+    args = parser.parse_args()
+    return args.func(args)
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

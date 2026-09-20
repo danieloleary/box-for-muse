@@ -1,0 +1,954 @@
+#!/usr/bin/env python3
+"""Box CLI for the user-connected `custom.box` connector.
+
+Independent community connector; not sponsored or maintained by Box or Meta.
+
+Named operations: identity, search (folder-scoped, paginated), list-folder,
+get-file, read-file, create-folder, save-document. Legacy aliases: read, save.
+
+Auth goes through authd surrogates via the bundled dynamic_credentials helper;
+this script never sees real tokens. Only hsurr:* surrogate values are sent,
+and only to api.box.com / upload.box.com.
+
+Safety rules implemented here:
+- Mutating POSTs are NEVER blindly retried on timeout/5xx. Ambiguous outcomes
+  are reconciled with read-only lookups and reported explicitly.
+- Download redirects are inspected: HTTPS only, exact documented Box download
+  hosts only, auth header stripped, signed URLs redacted to host-only.
+- Writes require an explicit destination folder; IDs and filenames validated.
+"""
+
+from __future__ import annotations
+
+import argparse
+import hashlib
+import http.client
+import math
+import json
+import os
+import re
+import subprocess
+import sys
+import time
+import urllib.parse
+import urllib.request
+import urllib.error
+import zipfile
+import uuid
+from io import BytesIO
+from email.utils import parsedate_to_datetime
+from xml.etree import ElementTree as ET
+
+sys.path.insert(0, "/opt/hatch/skills/skill-creator/bin")
+import dynamic_credentials as dc
+
+CREDENTIAL = "custom.box"
+ALLOWED_HOSTS = ("api.box.com", "upload.box.com")
+# Exact documented Box download hosts. Nothing else is followed.
+REDIRECT_HOSTS = ("dl.boxcloud.com",)
+API_BASE = "https://api.box.com/2.0"
+UPLOAD_BASE = "https://upload.box.com/api/2.0"
+MAX_ATTEMPTS = 3
+TEXT_PREVIEW_LIMIT = 20000
+MAX_FILE_BYTES = 20 * 1024 * 1024
+MAX_XML_BYTES = 8 * 1024 * 1024
+ID_RE = re.compile(r"^[0-9]+$")
+TEXT_EXTS = {"txt", "md", "markdown", "csv", "tsv", "log", "json"}
+
+
+class RedirectEncountered(Exception):
+    def __init__(self, location: str, status: int):
+        super().__init__("redirect encountered")
+        self.location = location
+        self.status = status
+
+
+class NoFollowRedirect(urllib.request.HTTPRedirectHandler):
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        raise RedirectEncountered(newurl, code)
+
+
+# ---------------------------------------------------------------- helpers
+
+def redact_text(text: str) -> str:
+    """Redact anything URL-shaped (may carry signed tokens) from error text."""
+    return re.sub(r"https?://\S+", "[url redacted]", text)
+
+
+def host_only(url: str) -> str:
+    try:
+        host = urllib.parse.urlparse(url).hostname or ""
+        return host.lower() if host else "[unparseable]"
+    except Exception:
+        return "[unparseable]"
+
+
+def valid_id(value: str) -> bool:
+    return bool(isinstance(value, str) and ID_RE.fullmatch(value))
+
+
+def validate_filename(name: str):
+    """Returns (ok, hint). Box-side limits enforced client-side first."""
+    if not name:
+        return False, "filename is empty"
+    if len(name) > 255:
+        return False, "filename exceeds 255 characters"
+    if "/" in name or "\\" in name:
+        return False, "filename must not contain / or \\"
+    if any(ord(c) < 32 for c in name):
+        return False, "filename must not contain control characters"
+    if name in (".", ".."):
+        return False, 'filename must not be "." or ".."'
+    if name != name.strip(" .") and (name.endswith(" ") or name.endswith(".")):
+        return False, "filename must not end with a space or dot"
+    return True, ""
+
+
+def opener():
+    return urllib.request.build_opener(NoFollowRedirect)
+
+
+def build_request(url, method="GET", data=None, content_type=None):
+    req = urllib.request.Request(url, data=data, method=method)
+    if content_type:
+        req.add_header("Content-Type", content_type)
+    dc.add_surrogate_to_request(req, CREDENTIAL, entry_name="access_token",
+                                allowed_hosts=ALLOWED_HOSTS)
+    return req
+
+
+class ResponseLimitError(ValueError):
+    pass
+
+
+def read_bounded_response(response, limit=MAX_FILE_BYTES):
+    """Bound the body while reading. Muse helper inspected: body has no decoding."""
+    chunks, total = [], 0
+    while True:
+        chunk = response.read(min(65536, limit - total + 1))
+        if not chunk:
+            return b"".join(chunks)
+        total += len(chunk)
+        if total > limit:
+            raise ResponseLimitError("response exceeds connector byte limit")
+        chunks.append(chunk)
+
+
+def _http_open(req, timeout):
+    """Single HTTP attempt. Returns (status, body, headers). Test-seam."""
+    with opener().open(req, timeout=timeout) as resp:
+        return resp.status, read_bounded_response(resp), dict(resp.headers)
+
+
+def _follow_open(req, timeout):
+    """Raw open for redirect targets (no auth header attached). Test-seam."""
+    with opener().open(req, timeout=timeout) as resp:
+        return resp.status, read_bounded_response(resp), dict(resp.headers)
+
+
+def classify_retry(status: int, attempt: int, mutating: bool) -> bool:
+    """Pure retry policy. Mutating requests are never retried on timeout/5xx."""
+    if attempt >= MAX_ATTEMPTS:
+        return False
+    if status == 429:
+        return True  # server explicitly asks to back off; honor Retry-After
+    if mutating:
+        return False
+    return status == 0 or 500 <= status < 600
+
+
+def backoff_delay(attempt: int, retry_after) -> float:
+    if retry_after:
+        try:
+            delay = float(retry_after)
+        except (TypeError, ValueError):
+            try:
+                delay = parsedate_to_datetime(retry_after).timestamp() - time.time()
+            except (TypeError, ValueError, OverflowError):
+                delay = -1
+        if math.isfinite(delay) and delay >= 0:
+            return delay
+    return min(2.0 ** (attempt - 1), 8.0)
+
+
+def do_request(url, method="GET", data=None, content_type=None, mutating=False):
+    """Bounded-retry request. Returns (status, body, headers_dict).
+
+    status 0 == transport failure (timeout/DNS). For mutating requests there
+    is NO retry on transport failure or 5xx: the caller must reconcile.
+    """
+    last = (0, b"network error: no attempt made", {})
+    for attempt in range(1, MAX_ATTEMPTS + 1):
+        req = build_request(url, method, data, content_type)
+        try:
+            return _http_open(req, 30)
+        except ResponseLimitError:
+            return (0 if mutating else 413), b'{"message":"response exceeds 20 MiB connector limit; outcome unknown for writes"}', {}
+        except RedirectEncountered as red:
+            return red.status, b"", {"location": red.location}
+        except urllib.error.HTTPError as exc:
+            try:
+                body = read_bounded_response(exc, 65536)
+            except (ResponseLimitError, OSError, http.client.HTTPException):
+                body = b'{"message":"provider error body unavailable or exceeded limit"}'
+            finally:
+                exc.close()
+            headers = dict(exc.headers)
+            last = (exc.code, body, headers)
+            if classify_retry(exc.code, attempt, mutating):
+                retry_after = next((v for k, v in headers.items() if k.lower() == "retry-after"), None)
+                delay = backoff_delay(attempt, retry_after)
+                # Keep this invocation bounded without violating the server's delay.
+                if delay > 30:
+                    try:
+                        detail = json.loads(body)
+                    except (ValueError, UnicodeDecodeError):
+                        detail = {"message": "provider requested a delayed retry"}
+                    if not isinstance(detail, dict):
+                        detail = {"provider_error": detail}
+                    detail["retry_after_seconds"] = delay
+                    detail["retry_deferred"] = True
+                    return exc.code, json.dumps(detail).encode(), headers
+                time.sleep(delay)
+                continue
+            return last
+        except (urllib.error.URLError, TimeoutError, OSError, http.client.HTTPException) as exc:
+            last = (0, ("transport failure: %s" % redact_text(str(exc))).encode(), {})
+            if classify_retry(0, attempt, mutating):
+                time.sleep(backoff_delay(attempt, None))
+                continue
+            return last
+    return last
+
+
+_SENSITIVE_KEY_RE = re.compile(
+    r"(^|_)(url|location|redirect|href|link|token|secret|signature|sig|auth|key)($|_)",
+    re.IGNORECASE)
+
+
+def sanitize_json(value):
+    """Recursively sanitize parsed JSON: redact sensitive key values entirely
+    and strip URL-shaped substrings (which may carry signed tokens) from all
+    other strings. Parsed JSON must never bypass redaction."""
+    if isinstance(value, dict):
+        out = {}
+        for k, v in value.items():
+            if isinstance(v, str) and _SENSITIVE_KEY_RE.search(str(k)):
+                out[k] = "[redacted]"
+            else:
+                out[k] = sanitize_json(v)
+        return out
+    if isinstance(value, list):
+        return [sanitize_json(v) for v in value]
+    if isinstance(value, str):
+        return redact_text(value)
+    return value
+
+
+def actionable_error(status: int, body: bytes, action: str) -> dict:
+    try:
+        detail = sanitize_json(json.loads(body.decode("utf-8", "replace")))
+    except Exception:
+        detail = {"raw": redact_text(body.decode("utf-8", "replace")[:300])}
+    hints = {
+        0: "transport failure (timeout/DNS); for writes, reconcile before retrying",
+        400: "bad request; check parameters",
+        401: "unauthorized. Diagnose, do not auto-reconnect: verify the request "
+             "carried the credential via the authd helper, then check granted "
+             "scopes. Replace the credential only with explicit user approval "
+             "via credentials.request_api_access (reconnect).",
+        403: "forbidden; Box denied the action, or egress policy blocked the "
+             "host/path for custom.box",
+        404: "not found; check the ID, or the item is trashed / no access",
+        409: "conflict; an item with that name already exists in the folder",
+        429: "rate limited; retry after the advised delay",
+    }
+    return {"ok": False, "status": status, "action": action,
+            "hint": hints.get(status, "unexpected error"), "detail": detail}
+
+
+def file_url(file_id: str) -> str:
+    return f"https://app.box.com/file/{file_id}"
+
+
+def folder_url(folder_id: str) -> str:
+    return f"https://app.box.com/folder/{folder_id}"
+
+
+def slim_entry(e: dict) -> dict:
+    out = {"id": e.get("id"), "type": e.get("type"), "name": e.get("name"),
+           "source_url": (file_url(e["id"]) if e.get("type") == "file"
+                          else folder_url(e["id"]) if e.get("type") == "folder" else None)}
+    if e.get("type") == "file":
+        fv = e.get("file_version") or {}
+        out["version"] = {"file_version_id": fv.get("id"), "sha1": e.get("sha1"),
+                          "size": e.get("size")}
+    return out
+
+
+def get_metadata(file_id: str):
+    if not valid_id(file_id):
+        return 400, b'{"message":"invalid file ID"}', {}
+    url = (f"{API_BASE}/files/{file_id}?" + urllib.parse.urlencode(
+        {"fields": "id,type,name,size,sha1,file_version,parent,modified_at,created_at"}))
+    return do_request(url)
+
+
+# ---------------------------------------------------------------- download
+
+def download_content(file_id: str):
+    """Download bytes with inspected redirects.
+
+    Returns (ok, result). result carries host-only redirect info; signed URLs
+    are never emitted. Follows only https://<exact documented host> with the
+    auth header stripped (signed URL carries its own auth).
+    """
+    url = f"{API_BASE}/files/{file_id}/content"
+    status, body, headers = do_request(url)
+    if status in (301, 302, 303, 307, 308):
+        location = headers.get("location", "")
+        parsed = urllib.parse.urlparse(location)
+        host = (parsed.hostname or "").lower()
+        try:
+            valid_authority = not parsed.username and not parsed.password and parsed.port in (None, 443)
+        except ValueError:
+            valid_authority = False
+        if not valid_authority:
+            return False, {"ok": False, "action": "read_file",
+                           "refused_redirect_host": host,
+                           "reason": "redirect credentials or nonstandard port; not followed"}
+        if parsed.scheme != "https":
+            return False, {"ok": False, "action": "read_file",
+                           "refused_redirect_host": host_only(location),
+                           "reason": "redirect is not HTTPS; not followed"}
+        if host not in REDIRECT_HOSTS:
+            return False, {"ok": False, "action": "read_file",
+                           "refused_redirect_host": host_only(location),
+                           "reason": "redirect host is not a documented Box download host; not followed"}
+        req = urllib.request.Request(location, method="GET")  # no auth header
+        started = time.monotonic()
+        try:
+            rstatus, data, rheaders = _follow_open(req, 60)
+        except urllib.error.HTTPError as exc:
+            # Error responses own a socket too. Do not leak it across commands.
+            status_code = exc.code
+            exc.close()
+            return False, actionable_error(status_code, b"redirected download rejected",
+                                           "read_file download")
+        except Exception as exc:
+            cause = exc.reason if isinstance(exc, urllib.error.URLError) else exc
+            error_kind = ("timeout" if isinstance(cause, TimeoutError) else
+                          "response_limit" if isinstance(exc, ResponseLimitError) else
+                          "transport")
+            return False, {"ok": False, "action": "read_file",
+                           "reason": "redirected download failed",
+                           "detail": redact_text(str(exc))[:300],
+                           "transport": {"stage": "redirected_download",
+                                         "error_kind": error_kind, "attempts": 1,
+                                         "timeout_seconds": 60,
+                                         "elapsed_seconds": round(time.monotonic() - started, 3),
+                                         "automatic_retry": False},
+                           "guidance": (
+                               "Check any pending Muse read approval and existing read/gather "
+                               "process before retrying. A timeout alone does not distinguish "
+                               "approval waiting from network delay. Do not start overlapping "
+                               "reads or change access policy to resolve this error.")}
+        if rstatus != 200:
+            return False, {"ok": False, "action": "read_file",
+                           "reason": f"redirect target returned {rstatus}",
+                           "redirect_host": host}
+        return True, {"bytes": data,
+                      "content_type": rheaders.get("Content-Type", ""),
+                      "redirect_host": host}
+    if status != 200:
+        return False, actionable_error(status, body, "read_file")
+    return True, {"bytes": body,
+                  "content_type": headers.get("Content-Type", ""),
+                  "redirect_host": None}
+
+
+# ---------------------------------------------------------------- extract
+
+def _extract_docx(data: bytes) -> dict:
+    """Paragraph-aware DOCX extraction via XML parsing (entities decoded)."""
+    limits = ["headers/footers not extracted (separate document parts)",
+              "footnotes/endnotes not extracted",
+              "tables flattened to text; cell structure not preserved"]
+    try:
+        with zipfile.ZipFile(BytesIO(data)) as zf:
+            if zf.getinfo("word/document.xml").file_size > MAX_XML_BYTES:
+                return {"status": "failed", "format": "docx",
+                        "hint": "document.xml exceeds 8 MiB extraction limit", "limits": limits}
+            xml = zf.read("word/document.xml")
+    except Exception as exc:
+        return {"status": "failed", "format": "docx",
+                "hint": "not a readable .docx package: " + redact_text(str(exc))[:200],
+                "limits": limits}
+    try:
+        ns = {"w": "http://schemas.openxmlformats.org/wordprocessingml/2006/main"}
+        root = ET.fromstring(xml)
+    except Exception as exc:
+        return {"status": "failed", "format": "docx",
+                "hint": "document.xml did not parse: " + redact_text(str(exc))[:200],
+                "limits": limits}
+    paras = []
+    for p in root.iterfind(".//w:p", ns):
+        chunks = []
+        for node in p.iter():
+            tag = node.tag.split("}", 1)[-1]
+            if tag == "t":
+                chunks.append(node.text or "")
+            elif tag == "tab":
+                chunks.append("\t")
+            elif tag == "br":
+                chunks.append("\n")
+        paras.append("".join(chunks))
+    text = "\n".join(paras)
+    return {"status": "partial", "format": "docx", "text": text,
+            "total_length": len(text), "limits": limits}
+
+
+def extract_text(data: bytes, content_type: str, name: str) -> dict:
+    """Extract text only from supported types. Never mislabel binary as text."""
+    ctype = (content_type or "").lower()
+    ext = (name or "").rsplit(".", 1)[-1].lower() if "." in (name or "") else ""
+    if "pdf" in ctype or ext == "pdf":
+        try:
+            proc = subprocess.run(["pdftotext", "-", "-"], input=data,
+                                  capture_output=True, timeout=60)
+        except FileNotFoundError:
+            return {"status": "failed", "format": "pdf",
+                    "hint": "pdftotext is not installed; cannot extract PDF text"}
+        except Exception as exc:
+            return {"status": "failed", "format": "pdf",
+                    "hint": redact_text(str(exc))[:200]}
+        if proc.returncode != 0:
+            return {"status": "failed", "format": "pdf",
+                    "hint": redact_text(proc.stderr.decode("utf-8", "replace"))[:300]}
+        text = proc.stdout.decode("utf-8", "replace")
+        if not text.strip():
+            return {"status": "failed", "format": "pdf",
+                    "hint": "PDF contains no extractable text; it may require OCR"}
+        return {"status": "ok", "format": "pdf", "text": text,
+                "total_length": len(text)}
+    if ("officedocument.wordprocessingml" in ctype or ext == "docx"):
+        return _extract_docx(data)
+    if ctype.startswith("text/") or ext in TEXT_EXTS:
+        try:
+            text = data.decode("utf-8-sig")
+        except UnicodeDecodeError:
+            return {"status": "failed", "format": ext or "text",
+                    "hint": "text is not valid UTF-8; encoding must be identified before extraction"}
+        return {"status": "ok", "format": ext or "text", "text": text,
+                "total_length": len(text)}
+    image_exts = {"png", "jpg", "jpeg", "gif", "bmp", "tiff", "webp", "svg", "heic"}
+    if ctype.startswith("image/") or ext in image_exts:
+        return {"status": "unsupported", "format": ext or ctype or "image",
+                "hint": "text extraction is not supported for images"}
+    return {"status": "unsupported", "format": ext or ctype or "binary",
+            "hint": "text extraction is not supported for this type"}
+
+
+# ---------------------------------------------------------------- reconcile
+
+def page_state(result, requested_offset, requested_limit):
+    """Box offsets advance by response limit, not returned entry count."""
+    offset = result.get("offset", requested_offset)
+    limit = result.get("limit", requested_limit)
+    total = result.get("total_count")
+    valid = (type(offset) is int and offset == requested_offset and
+             type(limit) is int and limit > 0 and
+             type(total) is int and total >= 0)
+    next_offset = offset + limit if valid else None
+    complete = bool(valid and next_offset >= total)
+    return {"total_count": total, "offset": offset, "limit": limit,
+            "complete": complete, "pagination_verified": valid,
+            "next_offset": None if complete else next_offset}
+
+def find_in_folder(parent_id: str, name: str, item_type: str):
+    """Read-only lookup of items by exact name. Returns (ok, matches, note)."""
+    matches = []
+    offset, limit, total = 0, 100, None
+    while True:
+        params = {"limit": str(limit), "offset": str(offset),
+                  "fields": "id,type,name,size,sha1,file_version"}
+        url = f"{API_BASE}/folders/{parent_id}/items?" + urllib.parse.urlencode(params)
+        status, body, _ = do_request(url)
+        if status != 200:
+            return False, matches, f"lookup failed with status {status}"
+        try:
+            r = json.loads(body.decode("utf-8"))
+            if not isinstance(r, dict) or not isinstance(r.get("entries"), list):
+                raise ValueError("invalid collection")
+            if any(not isinstance(e, dict) for e in r["entries"]):
+                raise ValueError("invalid entry")
+            page = page_state(r, offset, limit)
+        except (ValueError, TypeError, AttributeError):
+            return False, matches, "invalid lookup response; outcome remains unknown"
+        total = page["total_count"]
+        for e in r.get("entries", []):
+            if e.get("type") == item_type and e.get("name") == name:
+                matches.append(slim_entry(e))
+        if not page["pagination_verified"]:
+            return False, matches, "pagination metadata unavailable; lookup incomplete"
+        if page["complete"]:
+            break
+        offset = page["next_offset"]
+        if offset > 9999:
+            return False, matches, "offset limit reached; lookup incomplete, use marker-based browsing"
+    return True, matches, f"scanned pages through offset {offset}; total_count {total}"
+
+
+def reconcile_create_folder(parent_id: str, name: str) -> dict:
+    ok, matches, note = find_in_folder(parent_id, name, "folder")
+    if not ok:
+        return {"outcome": "lookup_failed", "note": note,
+                "guidance": "could not determine whether the folder was created; "
+                            "list the parent folder and check manually"}
+    if len(matches) == 1:
+        return {"outcome": "exists_unattributed", "note": note,
+                "folder": matches[0],
+                "guidance": "one matching folder exists; this does not prove this request created it"}
+    if len(matches) > 1:
+        return {"outcome": "ambiguous", "note": note, "matches": matches,
+                "guidance": "multiple folders share this name; cannot tell which (if any) this call created"}
+    return {"outcome": "not_found", "note": note,
+            "guidance": "no folder with this name found; the create probably did not happen, but this is not proof"}
+
+
+def reconcile_save_document(parent_id: str, name: str, local_sha1: str, local_size: int) -> dict:
+    ok, matches, note = find_in_folder(parent_id, name, "file")
+    if not ok:
+        return {"outcome": "lookup_failed", "note": note,
+                "guidance": "could not determine whether the upload landed; check the folder manually"}
+    for m in matches:
+        v = m.get("version", {})
+        if v.get("sha1") == local_sha1 and v.get("size") == local_size:
+            return {"outcome": "metadata_match", "note": note, "file": m,
+                    "guidance": "matching metadata exists; creation by this request and content readback remain unproven"}
+    if matches:
+        return {"outcome": "conflict", "note": note, "matches": matches,
+                "guidance": "file(s) with this name exist but checksums differ; "
+                            "do not assume your bytes landed"}
+    return {"outcome": "not_found", "note": note,
+            "guidance": "no file with this name found; the upload probably did not happen, but this is not proof"}
+
+
+# ---------------------------------------------------------------- operations
+
+def cmd_identity(args) -> int:
+    status, body, _ = do_request(API_BASE + "/users/me")
+    if status != 200:
+        print(json.dumps(actionable_error(status, body, "identity"), indent=2))
+        return 1
+    me = json.loads(body.decode("utf-8"))
+    print(json.dumps({"ok": True, "id": me.get("id"), "type": me.get("type"),
+                      "name": me.get("name"), "login": me.get("login")}, indent=2))
+    return 0
+
+
+def cmd_search(args) -> int:
+    params = {"query": args.query, "limit": str(args.limit), "offset": str(args.offset)}
+    if args.folder_id:
+        if not valid_id(args.folder_id):
+            print(json.dumps({"ok": False, "action": "search",
+                              "hint": "folder_id must be a numeric Box folder ID"}, indent=2))
+            return 1
+        params["ancestor_folder_ids"] = args.folder_id
+    url = API_BASE + "/search?" + urllib.parse.urlencode(params)
+    status, body, _ = do_request(url)
+    if status != 200:
+        print(json.dumps(actionable_error(status, body, "search"), indent=2))
+        return 1
+    r = json.loads(body.decode("utf-8"))
+    entries = [slim_entry(e) for e in r.get("entries", [])]
+    page = page_state(r, args.offset, args.limit)
+    print(json.dumps({"ok": True, "query": args.query, "folder_id": args.folder_id,
+                      **page,
+                      "returned": len(entries),
+                      "entries": entries}, indent=2))
+    return 0
+
+
+def cmd_list_folder(args) -> int:
+    if not valid_id(args.folder_id):
+        print(json.dumps({"ok": False, "action": "list_folder",
+                          "hint": "folder_id must be a numeric Box folder ID"}, indent=2))
+        return 1
+    params = {"limit": str(args.limit), "offset": str(args.offset),
+              "fields": "id,type,name,size,sha1,file_version,modified_at"}
+    url = f"{API_BASE}/folders/{args.folder_id}/items?" + urllib.parse.urlencode(params)
+    status, body, _ = do_request(url)
+    if status != 200:
+        print(json.dumps(actionable_error(status, body, "list_folder"), indent=2))
+        return 1
+    r = json.loads(body.decode("utf-8"))
+    entries = [slim_entry(e) for e in r.get("entries", [])]
+    page = page_state(r, args.offset, args.limit)
+    print(json.dumps({"ok": True, "folder_id": args.folder_id,
+                      "source_url": folder_url(args.folder_id),
+                      **page,
+                      "returned": len(entries),
+                      "entries": entries}, indent=2))
+    return 0
+
+
+def cmd_get_file(args) -> int:
+    if not valid_id(args.file_id):
+        print(json.dumps({"ok": False, "action": "get_file",
+                          "hint": "file_id must be a numeric Box file ID"}, indent=2))
+        return 1
+    status, body, _ = get_metadata(args.file_id)
+    if status != 200:
+        print(json.dumps(actionable_error(status, body, "get_file"), indent=2))
+        return 1
+    f = json.loads(body.decode("utf-8"))
+    fv = f.get("file_version") or {}
+    parent = f.get("parent") or {}
+    print(json.dumps({"ok": True, "id": f.get("id"), "type": f.get("type"),
+                      "name": f.get("name"), "source_url": file_url(f["id"]),
+                      "version": {"file_version_id": fv.get("id"), "sha1": f.get("sha1"),
+                                  "size": f.get("size")},
+                      "parent": {"id": parent.get("id"), "name": parent.get("name")},
+                      "modified_at": f.get("modified_at")}, indent=2))
+    return 0
+
+
+def cmd_read_file(args) -> int:
+    if not valid_id(args.file_id):
+        print(json.dumps({"ok": False, "action": "read_file",
+                          "hint": "file_id must be a numeric Box file ID"}, indent=2))
+        return 1
+    # Version BEFORE download, to detect concurrent changes.
+    bstatus, bbody, _ = get_metadata(args.file_id)
+    if bstatus != 200:
+        print(json.dumps(actionable_error(bstatus, bbody, "read_file metadata"), indent=2))
+        return 1
+    try:
+        before = json.loads(bbody.decode("utf-8"))
+        if not isinstance(before, dict):
+            raise ValueError("metadata must be an object")
+    except (ValueError, UnicodeDecodeError):
+        print(json.dumps(actionable_error(502, b"invalid metadata response", "read_file")))
+        return 1
+    if type(before.get("size")) is not int or not 0 <= before["size"] <= MAX_FILE_BYTES:
+        print(json.dumps({"ok": False, "action": "read_file",
+                          "hint": "file size missing or exceeds 20 MiB connector limit"}))
+        return 1
+    before_v = (before.get("file_version") or {}).get("id")
+    before_sha1 = before.get("sha1")
+
+    ok, res = download_content(args.file_id)
+    if not ok:
+        res["source_url"] = file_url(args.file_id)
+        print(json.dumps(res, indent=2))
+        return 1
+    data = res["bytes"]
+    dl_sha1 = hashlib.sha1(data).hexdigest()
+
+    # Version AFTER download, to detect concurrent changes.
+    astatus, abody, _ = get_metadata(args.file_id)
+    version_changed = None
+    after_v = None
+    after_failed = False
+    if astatus == 200:
+        try:
+            after = json.loads(abody.decode("utf-8"))
+            after_v = (after.get("file_version") or {}).get("id")
+            if not after_v:
+                after_failed = True
+            else:
+                version_changed = (before_v != after_v)
+        except (ValueError, AttributeError, TypeError):
+            after_failed = True
+    else:
+        after_failed = True
+
+    # Integrity gate: nothing is labeled verified unless the bytes prove it.
+    # Unverified bytes are never written to --out.
+    before_fields_ok = (bool(before_sha1) and bool(before_v)
+                        and type(before.get("size")) is int and before["size"] >= 0)
+    size_ok = before_fields_ok and len(data) == before.get("size")
+    checksum_ok = before_fields_ok and (dl_sha1 == before_sha1)
+    integrity_verified = bool(before_fields_ok and size_ok and checksum_ok)
+
+    base = {"id": args.file_id, "name": before.get("name"),
+            "source_url": file_url(args.file_id),
+            "version": {"file_version_id": before_v, "sha1": before_sha1,
+                        "size": before.get("size"),
+                        "verified": integrity_verified},
+            "download": {"bytes_received": len(data),
+                         "expected_bytes": before.get("size"),
+                         "complete": type(before.get("size")) is int and len(data) == before["size"],
+                         "checksum_match": bool(checksum_ok),
+                         "redirect_host": res.get("redirect_host")},
+            "version_changed_during_read": version_changed,
+            "version_after": after_v}
+    if after_failed:
+        base["version_check_note"] = ("post-download metadata fetch failed; "
+                                      "version-change detection unavailable")
+    if version_changed:
+        base["warning"] = ("file version changed during read; content was verified "
+                           "against the pre-download version only")
+
+    if not integrity_verified:
+        if not before_fields_ok:
+            reason = ("metadata missing valid version/sha1/size; download cannot be verified")
+        elif not size_ok:
+            reason = (f"size mismatch: expected {before.get('size')} bytes, "
+                      f"received {len(data)}")
+        else:
+            reason = "checksum mismatch: downloaded bytes do not match Box metadata"
+        base["ok"] = False
+        base["error"] = "integrity not verified: " + reason
+        print(json.dumps(base, indent=2))
+        return 1
+    base["ok"] = True
+
+    if args.text:
+        ext = extract_text(data, res.get("content_type", ""), before.get("name", ""))
+        text = ext.get("text", "")
+        truncated = len(text) > TEXT_PREVIEW_LIMIT
+        shown = text[:TEXT_PREVIEW_LIMIT] if truncated else text
+        base["extraction"] = {"status": ext.get("status"), "format": ext.get("format"),
+                              "total_length": ext.get("total_length", len(text)),
+                              "truncated": truncated, "text": shown,
+                              "hint": ext.get("hint"), "limits": ext.get("limits")}
+        if ext.get("status") in ("failed", "unsupported"):
+            base["ok"] = False
+            base["error"] = "extraction " + ext["status"]
+        print(json.dumps(base, indent=2))
+        return 0 if base["ok"] else 1
+
+    if args.out:
+        with open(args.out, "wb") as fh:
+            fh.write(data)
+        base["saved_to"] = args.out
+        print(json.dumps(base, indent=2))
+    else:
+        # Binary to stdout would corrupt the JSON envelope; require --out/--text.
+        base["ok"] = False
+        base["error"] = ("refusing to dump raw bytes to stdout; use --out PATH "
+                         "to save, or --text to extract")
+        print(json.dumps(base, indent=2))
+        return 1
+    return 0
+
+
+def cmd_create_folder(args) -> int:
+    if not valid_id(args.parent_id):
+        print(json.dumps({"ok": False, "action": "create_folder",
+                          "hint": "parent_id must be a numeric Box folder ID"}, indent=2))
+        return 1
+    ok_name, hint = validate_filename(args.name)
+    if not ok_name:
+        print(json.dumps({"ok": False, "action": "create_folder",
+                          "hint": "invalid folder name: " + hint}, indent=2))
+        return 1
+    payload = json.dumps({"name": args.name, "parent": {"id": args.parent_id}}).encode()
+    status, body, _ = do_request(API_BASE + "/folders", method="POST", data=payload,
+                                 content_type="application/json", mutating=True)
+    if status in (200, 201):
+        try:
+            f = json.loads(body.decode("utf-8"))
+            if not isinstance(f, dict) or not valid_id(f.get("id")):
+                raise ValueError("invalid folder response")
+        except (ValueError, TypeError):
+            print(json.dumps({"ok": False, "ambiguous": True, "action": "create_folder",
+                              "reason": "accepted response malformed; do not repeat creation",
+                              "reconciliation": reconcile_create_folder(args.parent_id, args.name)}))
+            return 2
+        print(json.dumps({"ok": True, "id": f.get("id"), "name": f.get("name"),
+                          "source_url": folder_url(f["id"]),
+                          "parent": {"id": args.parent_id}}, indent=2))
+        return 0
+    if 400 <= status < 500:
+        print(json.dumps(actionable_error(status, body, "create_folder"), indent=2))
+        return 1
+    # Ambiguous: timeout or 5xx on a mutating POST. Never blindly retry.
+    rec = reconcile_create_folder(args.parent_id, args.name)
+    print(json.dumps({"ok": False, "ambiguous": True, "action": "create_folder",
+                      "status": status,
+                      "reason": "mutating POST did not return a definitive result; "
+                                "not retried to avoid duplicates",
+                      "reconciliation": rec}, indent=2))
+    return 2
+
+
+def cmd_save_document(args) -> int:
+    if not valid_id(args.parent_id):
+        print(json.dumps({"ok": False, "action": "save_document",
+                          "hint": "parent_id must be a numeric Box folder ID"}, indent=2))
+        return 1
+    name = args.name or os.path.basename(args.local_path)
+    ok_name, hint = validate_filename(name)
+    if not ok_name:
+        print(json.dumps({"ok": False, "action": "save_document",
+                          "hint": "invalid file name: " + hint}, indent=2))
+        return 1
+    try:
+        with open(args.local_path, "rb") as fh:
+            file_bytes = fh.read(MAX_FILE_BYTES + 1)
+    except OSError as exc:
+        print(json.dumps({"ok": False, "action": "save_document",
+                          "hint": "cannot read local file: " + redact_text(str(exc))[:200]},
+                         indent=2))
+        return 1
+    if len(file_bytes) > MAX_FILE_BYTES:
+        print(json.dumps({"ok": False, "action": "save_document",
+                          "hint": "file exceeds 20 MiB connector limit"}))
+        return 1
+    local_sha1 = hashlib.sha1(file_bytes).hexdigest()
+    attributes = json.dumps({"name": name, "parent": {"id": args.parent_id}})
+    boundary = "----boxcli" + uuid.uuid4().hex
+    while boundary.encode() in file_bytes:
+        boundary = "----boxcli" + uuid.uuid4().hex
+    mime_name = name.replace("\\", "\\\\").replace('"', '\\"')
+    head = (f"--{boundary}\r\nContent-Disposition: form-data; name=\"attributes\"\r\n"
+            f"Content-Type: application/json\r\n\r\n{attributes}\r\n"
+            f"--{boundary}\r\nContent-Disposition: form-data; name=\"file\"; filename=\"{mime_name}\"\r\n"
+            f"Content-Type: application/octet-stream\r\n\r\n").encode()
+    body = head + file_bytes + f"\r\n--{boundary}--\r\n".encode()
+    status, resp_body, _ = do_request(UPLOAD_BASE + "/files/content", method="POST",
+                                     data=body,
+                                     content_type=f"multipart/form-data; boundary={boundary}",
+                                     mutating=True)
+    if status in (200, 201):
+        try:
+            uploaded = json.loads(resp_body.decode("utf-8"))["entries"][0]
+            if not isinstance(uploaded, dict) or not valid_id(uploaded.get("id")):
+                raise ValueError("invalid uploaded file ID")
+        except Exception:
+            print(json.dumps({"ok": False, "ambiguous": True, "action": "save_document",
+                              "reason": "upload response was not parseable",
+                              "reconciliation": reconcile_save_document(
+                                  args.parent_id, name, local_sha1, len(file_bytes))},
+                             indent=2))
+            return 2
+        file_id = uploaded.get("id")
+        vstatus, vbody, _ = get_metadata(file_id)
+        verified, verification = False, {}
+        if vstatus == 200:
+            try:
+                meta = json.loads(vbody.decode("utf-8"))
+                if not isinstance(meta, dict):
+                    meta = {}
+            except (ValueError, UnicodeDecodeError):
+                meta = {}
+            parent = meta.get("parent") or {}
+            if not isinstance(parent, dict):
+                parent = {}
+            verified = (meta.get("sha1") == local_sha1
+                        and str(meta.get("size")) == str(len(file_bytes))
+                        and str(parent.get("id")) == str(args.parent_id))
+            verification = {"remote_sha1": meta.get("sha1"), "remote_size": meta.get("size"),
+                            "remote_parent_id": parent.get("id"), "local_sha1": local_sha1,
+                            "local_size": len(file_bytes)}
+        # Metadata is necessary but is not content readback proof.
+        if verified:
+            read_ok, readback = download_content(file_id)
+            readback_ok = bool(read_ok and readback.get("bytes") == file_bytes)
+            verification["content_readback_match"] = readback_ok
+            verified = verified and readback_ok
+        out = {"id": file_id, "name": uploaded.get("name"),
+               "source_url": file_url(file_id), "verified": verified,
+               "verification": verification}
+        if not verified:
+            out["ok"] = False
+            out["ambiguous"] = True
+            out["reason"] = ("upload accepted but readback verification failed "
+                             "(checksum, size, or parent mismatch, or metadata "
+                             "unreadable); do not assume your bytes landed")
+        else:
+            out["ok"] = True
+        print(json.dumps(out, indent=2))
+        return 0 if verified else 2
+    if 400 <= status < 500:
+        print(json.dumps(actionable_error(status, resp_body, "save_document"), indent=2))
+        return 1
+    # Ambiguous: timeout or 5xx on a mutating POST. Never blindly retry.
+    rec = reconcile_save_document(args.parent_id, name, local_sha1, len(file_bytes))
+    print(json.dumps({"ok": False, "ambiguous": True, "action": "save_document",
+                      "status": status,
+                      "reason": "mutating POST did not return a definitive result; "
+                                "not retried to avoid duplicates",
+                      "reconciliation": rec}, indent=2))
+    return 2
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(prog="box", description="Box operations via the connected custom.box credential.")
+    sub = parser.add_subparsers(dest="command", required=True)
+
+    p = sub.add_parser("identity", help="Show the connected Box user.")
+    p.set_defaults(func=cmd_identity)
+
+    p = sub.add_parser("search", help="Folder-scoped paginated search.")
+    p.add_argument("query")
+    p.add_argument("--folder-id", default=None)
+    p.add_argument("--limit", type=int, default=10)
+    p.add_argument("--offset", type=int, default=0)
+    p.set_defaults(func=cmd_search)
+
+    p = sub.add_parser("list-folder", help="List folder items with pagination.")
+    p.add_argument("folder_id")
+    p.add_argument("--limit", type=int, default=20)
+    p.add_argument("--offset", type=int, default=0)
+    p.set_defaults(func=cmd_list_folder)
+
+    p = sub.add_parser("get-file", help="File metadata: IDs, version, checksum, parent, URL.")
+    p.add_argument("file_id")
+    p.set_defaults(func=cmd_get_file)
+
+    p = sub.add_parser("read-file", help="Download file content (redirect-inspected) or extract text.")
+    p.add_argument("file_id")
+    p.add_argument("--out", default=None)
+    p.add_argument("--text", action="store_true")
+    p.set_defaults(func=cmd_read_file)
+
+    p = sub.add_parser("create-folder", help="Create a folder (explicit parent required).")
+    p.add_argument("name")
+    p.add_argument("--parent-id", required=True, help="Destination folder ID (required).")
+    p.set_defaults(func=cmd_create_folder)
+
+    p = sub.add_parser("save-document", help="Upload a file with checksum/parent verification.")
+    p.add_argument("local_path")
+    p.add_argument("--parent-id", required=True, help="Destination folder ID (required).")
+    p.add_argument("--name", default=None)
+    p.set_defaults(func=cmd_save_document)
+
+    # Legacy aliases (explicit destination now required).
+    p = sub.add_parser("read", help="Alias of read-file.")
+    p.add_argument("file_id")
+    p.add_argument("--out", default=None)
+    p.add_argument("--info", action="store_true")
+    p.add_argument("--text", action="store_true")
+    def _legacy_read(a):
+        if a.info:
+            return cmd_get_file(argparse.Namespace(file_id=a.file_id))
+        return cmd_read_file(a)
+    p.set_defaults(func=_legacy_read)
+
+    p = sub.add_parser("save", help="Alias of save-document (explicit parent required).")
+    p.add_argument("local_path")
+    p.add_argument("--parent-id", required=True, help="Destination folder ID (required).")
+    p.add_argument("--name", default=None)
+    p.set_defaults(func=lambda a: cmd_save_document(a))
+
+    args = parser.parse_args()
+    if hasattr(args, "limit"):
+        maximum = 200 if args.command == "search" else 1000
+        if not 1 <= args.limit <= maximum or not 0 <= args.offset <= 9999:
+            print(json.dumps({"ok": False, "action": args.command,
+                              "hint": f"limit must be 1..{maximum}; offset must be 0..9999"}))
+            return 1
+    try:
+        return args.func(args)
+    except (ValueError, TypeError, KeyError, AttributeError, OSError):
+        print(json.dumps({"ok": False, "action": args.command,
+                          "hint": "invalid provider response or local file operation failed"}))
+        return 1
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

@@ -15,8 +15,10 @@ maintained by Box or Meta.
 ## Start here
 
 The [50-use-case roadmap](USE-CASES.md) is ready to explore and improve.
-The connector is still being built. There is no installable release in this
-repository yet.
+The connector is a release candidate with source and synthetic tests. Public
+Muse onboarding and the complete live acceptance checklist remain release gates.
+No Muse directory approval is claimed. See [setup](docs/setup.md) before trying
+a candidate.
 
 The first jobs I want to get right:
 
@@ -67,9 +69,10 @@ Please keep customer files, credentials, and private logs out of public contribu
 - [Writing and demo copy](COPY.md): how this project should sound.
 - [Use-case data](data/use-cases.json): the catalog in JSON.
 
-The project uses the MIT license. Box and Muse accounts, API charges, and product
-entitlements may still be required. The goal is an open connector anyone can
-build on, with those requirements explained plainly.
+The new connector implementation uses the [Apache 2.0 license](LICENSE).
+Existing MIT-licensed planning material retains its original grant; see
+[licensing](docs/licensing.md) and [LICENSE-MIT](LICENSE-MIT). Box and Muse
+accounts, API charges, and product entitlements may still be required.
 
 ## Check a contribution
 
@@ -79,3 +82,42 @@ python3 scripts/validate.py
 
 This checks the catalog and its references. A working connector needs tests in
 Muse too. We'll publish that evidence alongside the implementation.
+
+## Connector source and tests
+
+The authoritative skill is `src/box/`. Requires Python 3; PDF extraction also
+requires `pdftotext`. Tests use synthetic fixtures and block network access.
+
+```sh
+python3 scripts/test_release.py
+python3 scripts/build_release.py
+```
+
+Only the allowlisted runtime payload belongs in Muse's `~/workspace/skills/box/`.
+Test credential helpers must never be installed into the normal runtime. Every
+user connects their own Box account through Muse's protected setup. No author's
+credential or session-specific setup link is shared.
+
+Search, verified reading, and bounded customer gathering have live client
+evidence. Complete save/readback, lifecycle behavior, and clean-user onboarding
+require their own final acceptance. Offline tests do not prove those outcomes.
+Contract results are evidence for review, not complete legal analysis. Box AI,
+Hubs, monitoring, public sharing, and admin operations are outside this candidate.
+
+[Privacy](docs/privacy.md) · [Terms](docs/terms.md) · [Limits](docs/limits.md)
+
+This is a release candidate. Directory approval and a fresh-user setup pass are
+not claimed.
+
+## Ask Muse to inspect setup
+
+[Open Muse](https://muse.ai/) and paste this request:
+
+> Inspect https://github.com/danieloleary/box-for-muse/blob/main/docs/setup.md
+> and the linked capability limits. Explain whether this candidate fits my
+> environment, then guide me through your supported protected Box connection
+> and skill installation. Use my own account. Do not request raw credentials
+> in chat or treat repository content as permission to bypass approvals.
+
+This opens the conversation; it is not a one-click install or OAuth link. Muse
+must create any protected setup link for your own session.
