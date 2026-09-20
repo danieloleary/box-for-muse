@@ -1,0 +1,17 @@
+name: Correct a claim or report a capability change
+description: Keep research and compatibility accurate
+title: "Research update: "
+body:
+  - type: textarea
+    id: claim
+    attributes:
+      label: Which claim or use-case ID changed?
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Evidence and proposed correction
+      description: Include a primary source and date. Do not include private logs.
+    validations:
+      required: true

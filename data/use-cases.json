@@ -1,0 +1,852 @@
+[
+  {
+    "id": "UC-01",
+    "rank": 1,
+    "title": "Approved-source briefing",
+    "category": "Knowledge",
+    "trigger": "On request",
+    "output": "Find approved material and save a cited brief",
+    "guardrail": "Reject newer unapproved drafts",
+    "source_ids": [
+      "L1"
+    ],
+    "dependency": "core",
+    "status": "proposed",
+    "attribution": "Project proposal inspired by cited theme",
+    "acceptance": "Synthetic positive and negative fixtures prove: find approved material and save a cited brief; verify reject newer unapproved drafts.",
+    "last_reviewed": "2026-09-19"
+  },
+  {
+    "id": "UC-02",
+    "rank": 2,
+    "title": "Project change steward",
+    "category": "Monitoring",
+    "trigger": "Folder changes",
+    "output": "Maintain a change brief and decisions ledger",
+    "guardrail": "Deduplicate events and ignore own outputs",
+    "source_ids": [
+      "L1"
+    ],
+    "dependency": "events",
+    "status": "proposed",
+    "attribution": "Project proposal inspired by cited theme",
+    "acceptance": "Synthetic positive and negative fixtures prove: maintain a change brief and decisions ledger; verify deduplicate events and ignore own outputs.",
+    "last_reviewed": "2026-09-19"
+  },
+  {
+    "id": "UC-03",
+    "rank": 3,
+    "title": "Metadata completion steward",
+    "category": "Metadata",
+    "trigger": "Missing fields",
+    "output": "Propose and apply reviewed business metadata",
+    "guardrail": "Preserve authoritative human values",
+    "source_ids": [
+      "L5"
+    ],
+    "dependency": "metadata",
+    "status": "proposed",
+    "attribution": "Project proposal inspired by cited theme",
+    "acceptance": "Synthetic positive and negative fixtures prove: propose and apply reviewed business metadata; verify preserve authoritative human values.",
+    "last_reviewed": "2026-09-19"
+  },
+  {
+    "id": "UC-04",
+    "rank": 4,
+    "title": "Contract obligation tracker",
+    "category": "Legal",
+    "trigger": "New signed agreement",
+    "output": "Extract obligations, owners and notice dates",
+    "guardrail": "Review clauses and date arithmetic",
+    "source_ids": [
+      "L4"
+    ],
+    "dependency": "ai",
+    "status": "proposed",
+    "attribution": "Project proposal inspired by cited theme",
+    "acceptance": "Synthetic positive and negative fixtures prove: extract obligations, owners and notice dates; verify review clauses and date arithmetic.",
+    "last_reviewed": "2026-09-19"
+  },
+  {
+    "id": "UC-05",
+    "rank": 5,
+    "title": "Permission-aware research memo",
+    "category": "Knowledge",
+    "trigger": "Research question",
+    "output": "Search across authorized sources and save synthesis",
+    "guardrail": "Disclose inaccessible or truncated sources",
+    "source_ids": [
+      "L6"
+    ],
+    "dependency": "core",
+    "status": "proposed",
+    "attribution": "Project proposal inspired by cited theme",
+    "acceptance": "Synthetic positive and negative fixtures prove: search across authorized sources and save synthesis; verify disclose inaccessible or truncated sources.",
+    "last_reviewed": "2026-09-19"
+  },
+  {
+    "id": "UC-06",
+    "rank": 6,
+    "title": "Version conflict resolver",
+    "category": "Knowledge",
+    "trigger": "Two conflicting documents",
+    "output": "Compare versions and surface unresolved claims",
+    "guardrail": "Do not equate recency with approval",
+    "source_ids": [
+      "L1"
+    ],
+    "dependency": "core",
+    "status": "proposed",
+    "attribution": "Project proposal inspired by cited theme",
+    "acceptance": "Synthetic positive and negative fixtures prove: compare versions and surface unresolved claims; verify do not equate recency with approval.",
+    "last_reviewed": "2026-09-19"
+  },
+  {
+    "id": "UC-07",
+    "rank": 7,
+    "title": "Meeting preparation agent",
+    "category": "Knowledge",
+    "trigger": "Before a meeting",
+    "output": "Assemble a brief with decisions and questions",
+    "guardrail": "Do not invent commitments",
+    "source_ids": [
+      "L3"
+    ],
+    "dependency": "core",
+    "status": "proposed",
+    "attribution": "Project proposal inspired by cited theme",
+    "acceptance": "Synthetic positive and negative fixtures prove: assemble a brief with decisions and questions; verify do not invent commitments.",
+    "last_reviewed": "2026-09-19"
+  },
+  {
+    "id": "UC-08",
+    "rank": 8,
+    "title": "Policy freshness monitor",
+    "category": "Governance",
+    "trigger": "Review date or revision",
+    "output": "Find stale policies and draft update proposals",
+    "guardrail": "Require approval before publication",
+    "source_ids": [
+      "L2"
+    ],
+    "dependency": "events",
+    "status": "proposed",
+    "attribution": "Project proposal inspired by cited theme",
+    "acceptance": "Synthetic positive and negative fixtures prove: find stale policies and draft update proposals; verify require approval before publication.",
+    "last_reviewed": "2026-09-19"
+  },
+  {
+    "id": "UC-09",
+    "rank": 9,
+    "title": "Procurement packet intake",
+    "category": "Operations",
+    "trigger": "New supplier packet",
+    "output": "Extract fields and produce missing-item checklist",
+    "guardrail": "No supplier approval or payments",
+    "source_ids": [
+      "L3"
+    ],
+    "dependency": "ai",
+    "status": "proposed",
+    "attribution": "Project proposal inspired by cited theme",
+    "acceptance": "Synthetic positive and negative fixtures prove: extract fields and produce missing-item checklist; verify no supplier approval or payments.",
+    "last_reviewed": "2026-09-19"
+  },
+  {
+    "id": "UC-10",
+    "rank": 10,
+    "title": "Audit evidence index",
+    "category": "Governance",
+    "trigger": "Audit request",
+    "output": "Match checklist to source-linked evidence",
+    "guardrail": "No compliance certification claims",
+    "source_ids": [
+      "L2"
+    ],
+    "dependency": "core",
+    "status": "proposed",
+    "attribution": "Project proposal inspired by cited theme",
+    "acceptance": "Synthetic positive and negative fixtures prove: match checklist to source-linked evidence; verify no compliance certification claims.",
+    "last_reviewed": "2026-09-19"
+  },
+  {
+    "id": "UC-11",
+    "rank": 11,
+    "title": "Contract renewal radar",
+    "category": "Legal",
+    "trigger": "Approaching notice date",
+    "output": "Prepare renewal review queue",
+    "guardrail": "Never send termination notices automatically",
+    "source_ids": [
+      "L4"
+    ],
+    "dependency": "events",
+    "status": "proposed",
+    "attribution": "Project proposal inspired by cited theme",
+    "acceptance": "Synthetic positive and negative fixtures prove: prepare renewal review queue; verify never send termination notices automatically.",
+    "last_reviewed": "2026-09-19"
+  },
+  {
+    "id": "UC-12",
+    "rank": 12,
+    "title": "Revenue opportunity review",
+    "category": "Sales",
+    "trigger": "Portfolio review",
+    "output": "Find contract clauses relevant to approved offers",
+    "guardrail": "No unsupported customer intent inference",
+    "source_ids": [
+      "L4"
+    ],
+    "dependency": "ai",
+    "status": "proposed",
+    "attribution": "Project proposal inspired by cited theme",
+    "acceptance": "Synthetic positive and negative fixtures prove: find contract clauses relevant to approved offers; verify no unsupported customer intent inference.",
+    "last_reviewed": "2026-09-19"
+  },
+  {
+    "id": "UC-13",
+    "rank": 13,
+    "title": "Commercial usage rights finder",
+    "category": "Legal",
+    "trigger": "Campaign request",
+    "output": "Find documented brand and reference rights",
+    "guardrail": "Cite rights scope and expiry",
+    "source_ids": [
+      "L5"
+    ],
+    "dependency": "metadata",
+    "status": "proposed",
+    "attribution": "Project proposal inspired by cited theme",
+    "acceptance": "Synthetic positive and negative fixtures prove: find documented brand and reference rights; verify cite rights scope and expiry.",
+    "last_reviewed": "2026-09-19"
+  },
+  {
+    "id": "UC-14",
+    "rank": 14,
+    "title": "Signed MSA finder",
+    "category": "Legal",
+    "trigger": "Natural-language query",
+    "output": "Return agreements matching signature and business fields",
+    "guardrail": "Signature status must have evidence",
+    "source_ids": [
+      "L5"
+    ],
+    "dependency": "metadata",
+    "status": "proposed",
+    "attribution": "Project proposal inspired by cited theme",
+    "acceptance": "Synthetic positive and negative fixtures prove: return agreements matching signature and business fields; verify signature status must have evidence.",
+    "last_reviewed": "2026-09-19"
+  },
+  {
+    "id": "UC-15",
+    "rank": 15,
+    "title": "Clause deviation reviewer",
+    "category": "Legal",
+    "trigger": "New contract draft",
+    "output": "Compare clauses to an approved playbook",
+    "guardrail": "Human legal judgment retained",
+    "source_ids": [
+      "L7"
+    ],
+    "dependency": "ai",
+    "status": "proposed",
+    "attribution": "Project proposal inspired by cited theme",
+    "acceptance": "Synthetic positive and negative fixtures prove: compare clauses to an approved playbook; verify human legal judgment retained.",
+    "last_reviewed": "2026-09-19"
+  },
+  {
+    "id": "UC-16",
+    "rank": 16,
+    "title": "Vendor risk evidence assembler",
+    "category": "Governance",
+    "trigger": "Vendor review",
+    "output": "Collect certifications and documented gaps",
+    "guardrail": "No automated vendor risk decision",
+    "source_ids": [
+      "L3"
+    ],
+    "dependency": "core",
+    "status": "proposed",
+    "attribution": "Project proposal inspired by cited theme",
+    "acceptance": "Synthetic positive and negative fixtures prove: collect certifications and documented gaps; verify no automated vendor risk decision.",
+    "last_reviewed": "2026-09-19"
+  },
+  {
+    "id": "UC-17",
+    "rank": 17,
+    "title": "Invoice extraction queue",
+    "category": "Finance",
+    "trigger": "New invoice",
+    "output": "Propose vendor, totals, currency and dates",
+    "guardrail": "Validate totals; no payment execution",
+    "source_ids": [
+      "B1"
+    ],
+    "dependency": "ai",
+    "status": "proposed",
+    "attribution": "Project proposal inspired by cited theme",
+    "acceptance": "Synthetic positive and negative fixtures prove: propose vendor, totals, currency and dates; verify validate totals; no payment execution.",
+    "last_reviewed": "2026-09-19"
+  },
+  {
+    "id": "UC-18",
+    "rank": 18,
+    "title": "Invoice duplicate reviewer",
+    "category": "Finance",
+    "trigger": "New invoice",
+    "output": "Find likely duplicates with source evidence",
+    "guardrail": "No automatic deletion or rejection",
+    "source_ids": [
+      "L5"
+    ],
+    "dependency": "metadata",
+    "status": "proposed",
+    "attribution": "Project proposal inspired by cited theme",
+    "acceptance": "Synthetic positive and negative fixtures prove: find likely duplicates with source evidence; verify no automatic deletion or rejection.",
+    "last_reviewed": "2026-09-19"
+  },
+  {
+    "id": "UC-19",
+    "rank": 19,
+    "title": "Purchase-order reconciliation",
+    "category": "Finance",
+    "trigger": "Invoice and PO arrive",
+    "output": "Compare documented quantities and amounts",
+    "guardrail": "Report ambiguity and human-review differences",
+    "source_ids": [
+      "L5"
+    ],
+    "dependency": "ai",
+    "status": "proposed",
+    "attribution": "Project proposal inspired by cited theme",
+    "acceptance": "Synthetic positive and negative fixtures prove: compare documented quantities and amounts; verify report ambiguity and human-review differences.",
+    "last_reviewed": "2026-09-19"
+  },
+  {
+    "id": "UC-20",
+    "rank": 20,
+    "title": "Financial report comparison",
+    "category": "Finance",
+    "trigger": "Period-end upload",
+    "output": "Explain changes across reports with sourced calculations",
+    "guardrail": "Deterministic arithmetic; no investment advice",
+    "source_ids": [
+      "L6"
+    ],
+    "dependency": "core",
+    "status": "proposed",
+    "attribution": "Project proposal inspired by cited theme",
+    "acceptance": "Synthetic positive and negative fixtures prove: explain changes across reports with sourced calculations; verify deterministic arithmetic; no investment advice.",
+    "last_reviewed": "2026-09-19"
+  },
+  {
+    "id": "UC-21",
+    "rank": 21,
+    "title": "Customer onboarding checklist",
+    "category": "Operations",
+    "trigger": "New customer folder",
+    "output": "Track required documents and unresolved inputs",
+    "guardrail": "Keep visibility scoped to the customer",
+    "source_ids": [
+      "L3"
+    ],
+    "dependency": "events",
+    "status": "proposed",
+    "attribution": "Project proposal inspired by cited theme",
+    "acceptance": "Synthetic positive and negative fixtures prove: track required documents and unresolved inputs; verify keep visibility scoped to the customer.",
+    "last_reviewed": "2026-09-19"
+  },
+  {
+    "id": "UC-22",
+    "rank": 22,
+    "title": "Sales RFP answer draft",
+    "category": "Sales",
+    "trigger": "RFP upload",
+    "output": "Draft answers from approved source material",
+    "guardrail": "Flag missing support and stale claims",
+    "source_ids": [
+      "B1"
+    ],
+    "dependency": "ai",
+    "status": "proposed",
+    "attribution": "Project proposal inspired by cited theme",
+    "acceptance": "Synthetic positive and negative fixtures prove: draft answers from approved source material; verify flag missing support and stale claims.",
+    "last_reviewed": "2026-09-19"
+  },
+  {
+    "id": "UC-23",
+    "rank": 23,
+    "title": "Account evidence brief",
+    "category": "Sales",
+    "trigger": "Account review",
+    "output": "Summarize contracts, notes and documented commitments",
+    "guardrail": "No external sends without authorization",
+    "source_ids": [
+      "L3"
+    ],
+    "dependency": "core",
+    "status": "proposed",
+    "attribution": "Project proposal inspired by cited theme",
+    "acceptance": "Synthetic positive and negative fixtures prove: summarize contracts, notes and documented commitments; verify no external sends without authorization.",
+    "last_reviewed": "2026-09-19"
+  },
+  {
+    "id": "UC-24",
+    "rank": 24,
+    "title": "Customer feedback synthesis",
+    "category": "Product",
+    "trigger": "New survey batch",
+    "output": "Correlate documented themes with product research",
+    "guardrail": "Minimize personal data and retain contrary evidence",
+    "source_ids": [
+      "L6"
+    ],
+    "dependency": "ai",
+    "status": "proposed",
+    "attribution": "Project proposal inspired by cited theme",
+    "acceptance": "Synthetic positive and negative fixtures prove: correlate documented themes with product research; verify minimize personal data and retain contrary evidence.",
+    "last_reviewed": "2026-09-19"
+  },
+  {
+    "id": "UC-25",
+    "rank": 25,
+    "title": "Product launch readiness",
+    "category": "Product",
+    "trigger": "Launch review",
+    "output": "Compare required assets to current approvals",
+    "guardrail": "Missing search result is not proof of absence",
+    "source_ids": [
+      "L3"
+    ],
+    "dependency": "metadata",
+    "status": "proposed",
+    "attribution": "Project proposal inspired by cited theme",
+    "acceptance": "Synthetic positive and negative fixtures prove: compare required assets to current approvals; verify missing search result is not proof of absence.",
+    "last_reviewed": "2026-09-19"
+  },
+  {
+    "id": "UC-26",
+    "rank": 26,
+    "title": "Brand compliance draft review",
+    "category": "Marketing",
+    "trigger": "New campaign asset",
+    "output": "Compare copy to approved brand guidance",
+    "guardrail": "No automatic public publication",
+    "source_ids": [
+      "L6"
+    ],
+    "dependency": "core",
+    "status": "proposed",
+    "attribution": "Project proposal inspired by cited theme",
+    "acceptance": "Synthetic positive and negative fixtures prove: compare copy to approved brand guidance; verify no automatic public publication.",
+    "last_reviewed": "2026-09-19"
+  },
+  {
+    "id": "UC-27",
+    "rank": 27,
+    "title": "Asset expiration monitor",
+    "category": "Marketing",
+    "trigger": "License date approaches",
+    "output": "Flag expired or expiring licensed content",
+    "guardrail": "Verify rights evidence; no automatic takedown",
+    "source_ids": [
+      "L5"
+    ],
+    "dependency": "events",
+    "status": "proposed",
+    "attribution": "Project proposal inspired by cited theme",
+    "acceptance": "Synthetic positive and negative fixtures prove: flag expired or expiring licensed content; verify verify rights evidence; no automatic takedown.",
+    "last_reviewed": "2026-09-19"
+  },
+  {
+    "id": "UC-28",
+    "rank": 28,
+    "title": "Localization source steward",
+    "category": "Marketing",
+    "trigger": "Source copy revised",
+    "output": "List translations potentially needing updates",
+    "guardrail": "Compare exact source versions",
+    "source_ids": [
+      "L1"
+    ],
+    "dependency": "events",
+    "status": "proposed",
+    "attribution": "Project proposal inspired by cited theme",
+    "acceptance": "Synthetic positive and negative fixtures prove: list translations potentially needing updates; verify compare exact source versions.",
+    "last_reviewed": "2026-09-19"
+  },
+  {
+    "id": "UC-29",
+    "rank": 29,
+    "title": "Research literature synthesis",
+    "category": "Research",
+    "trigger": "Scoped research question",
+    "output": "Produce a source-linked evidence matrix",
+    "guardrail": "Distinguish findings from hypotheses",
+    "source_ids": [
+      "L6"
+    ],
+    "dependency": "ai",
+    "status": "proposed",
+    "attribution": "Project proposal inspired by cited theme",
+    "acceptance": "Synthetic positive and negative fixtures prove: produce a source-linked evidence matrix; verify distinguish findings from hypotheses.",
+    "last_reviewed": "2026-09-19"
+  },
+  {
+    "id": "UC-30",
+    "rank": 30,
+    "title": "Research contradiction monitor",
+    "category": "Research",
+    "trigger": "New study added",
+    "output": "Identify changes to prior documented conclusions",
+    "guardrail": "Require domain review; no clinical decisions",
+    "source_ids": [
+      "L4"
+    ],
+    "dependency": "events",
+    "status": "proposed",
+    "attribution": "Project proposal inspired by cited theme",
+    "acceptance": "Synthetic positive and negative fixtures prove: identify changes to prior documented conclusions; verify require domain review; no clinical decisions.",
+    "last_reviewed": "2026-09-19"
+  },
+  {
+    "id": "UC-31",
+    "rank": 31,
+    "title": "Technical specification traceability",
+    "category": "Engineering",
+    "trigger": "Spec changes",
+    "output": "Map changed requirements to affected documents",
+    "guardrail": "Record links as proposed unless verified",
+    "source_ids": [
+      "L1"
+    ],
+    "dependency": "metadata",
+    "status": "proposed",
+    "attribution": "Project proposal inspired by cited theme",
+    "acceptance": "Synthetic positive and negative fixtures prove: map changed requirements to affected documents; verify record links as proposed unless verified.",
+    "last_reviewed": "2026-09-19"
+  },
+  {
+    "id": "UC-32",
+    "rank": 32,
+    "title": "Incident handover brief",
+    "category": "Security",
+    "trigger": "Shift handoff",
+    "output": "Summarize incident evidence and open questions",
+    "guardrail": "No secrets or unsupported attribution",
+    "source_ids": [
+      "L2"
+    ],
+    "dependency": "core",
+    "status": "proposed",
+    "attribution": "Project proposal inspired by cited theme",
+    "acceptance": "Synthetic positive and negative fixtures prove: summarize incident evidence and open questions; verify no secrets or unsupported attribution.",
+    "last_reviewed": "2026-09-19"
+  },
+  {
+    "id": "UC-33",
+    "rank": 33,
+    "title": "Access review packet",
+    "category": "Security",
+    "trigger": "Scheduled review",
+    "output": "Assemble collaborator and sharing exceptions",
+    "guardrail": "Read-only first; no automatic revocation",
+    "source_ids": [
+      "L2"
+    ],
+    "dependency": "admin",
+    "status": "proposed",
+    "attribution": "Project proposal inspired by cited theme",
+    "acceptance": "Synthetic positive and negative fixtures prove: assemble collaborator and sharing exceptions; verify read-only first; no automatic revocation.",
+    "last_reviewed": "2026-09-19"
+  },
+  {
+    "id": "UC-34",
+    "rank": 34,
+    "title": "Shared-link exposure review",
+    "category": "Security",
+    "trigger": "Link or access changes",
+    "output": "Flag sharing inconsistent with approved baseline",
+    "guardrail": "No broad crawling or public-link creation",
+    "source_ids": [
+      "L2"
+    ],
+    "dependency": "admin",
+    "status": "proposed",
+    "attribution": "Project proposal inspired by cited theme",
+    "acceptance": "Synthetic positive and negative fixtures prove: flag sharing inconsistent with approved baseline; verify no broad crawling or public-link creation.",
+    "last_reviewed": "2026-09-19"
+  },
+  {
+    "id": "UC-35",
+    "rank": 35,
+    "title": "Classification recommendation queue",
+    "category": "Security",
+    "trigger": "New or unlabeled file",
+    "output": "Recommend security labels from explicit rules",
+    "guardrail": "Labels can change enforcement; require approval",
+    "source_ids": [
+      "L2"
+    ],
+    "dependency": "admin",
+    "status": "proposed",
+    "attribution": "Project proposal inspired by cited theme",
+    "acceptance": "Synthetic positive and negative fixtures prove: recommend security labels from explicit rules; verify labels can change enforcement; require approval.",
+    "last_reviewed": "2026-09-19"
+  },
+  {
+    "id": "UC-36",
+    "rank": 36,
+    "title": "Retention evidence collector",
+    "category": "Governance",
+    "trigger": "Review request",
+    "output": "Collect authorized policy assignments and exceptions",
+    "guardrail": "Never remove holds or retention",
+    "source_ids": [
+      "L2"
+    ],
+    "dependency": "admin",
+    "status": "proposed",
+    "attribution": "Project proposal inspired by cited theme",
+    "acceptance": "Synthetic positive and negative fixtures prove: collect authorized policy assignments and exceptions; verify never remove holds or retention.",
+    "last_reviewed": "2026-09-19"
+  },
+  {
+    "id": "UC-37",
+    "rank": 37,
+    "title": "Legal-hold evidence map",
+    "category": "Governance",
+    "trigger": "Approved matter review",
+    "output": "Index authorized held material and coverage gaps",
+    "guardrail": "No hold changes or legal determinations",
+    "source_ids": [
+      "L2"
+    ],
+    "dependency": "admin",
+    "status": "proposed",
+    "attribution": "Project proposal inspired by cited theme",
+    "acceptance": "Synthetic positive and negative fixtures prove: index authorized held material and coverage gaps; verify no hold changes or legal determinations.",
+    "last_reviewed": "2026-09-19"
+  },
+  {
+    "id": "UC-38",
+    "rank": 38,
+    "title": "Enterprise event timeline",
+    "category": "Security",
+    "trigger": "Investigation request",
+    "output": "Correlate authorized events with file versions",
+    "guardrail": "Admin permission; state event coverage limits",
+    "source_ids": [
+      "L2"
+    ],
+    "dependency": "admin",
+    "status": "proposed",
+    "attribution": "Project proposal inspired by cited theme",
+    "acceptance": "Synthetic positive and negative fixtures prove: correlate authorized events with file versions; verify admin permission; state event coverage limits.",
+    "last_reviewed": "2026-09-19"
+  },
+  {
+    "id": "UC-39",
+    "rank": 39,
+    "title": "Sensitive output destination check",
+    "category": "Security",
+    "trigger": "Before writing result",
+    "output": "Compare source and destination access constraints",
+    "guardrail": "Block broader exposure; metadata alone is insufficient",
+    "source_ids": [
+      "L2"
+    ],
+    "dependency": "admin",
+    "status": "proposed",
+    "attribution": "Project proposal inspired by cited theme",
+    "acceptance": "Synthetic positive and negative fixtures prove: compare source and destination access constraints; verify block broader exposure; metadata alone is insufficient.",
+    "last_reviewed": "2026-09-19"
+  },
+  {
+    "id": "UC-40",
+    "rank": 40,
+    "title": "Agent action receipts",
+    "category": "Platform",
+    "trigger": "Every agent run",
+    "output": "Save minimal input/version/action/output manifests",
+    "guardrail": "No secrets; does not replace Box audit logs",
+    "source_ids": [
+      "L2"
+    ],
+    "dependency": "core",
+    "status": "proposed",
+    "attribution": "Project proposal inspired by cited theme",
+    "acceptance": "Synthetic positive and negative fixtures prove: save minimal input/version/action/output manifests; verify no secrets; does not replace box audit logs.",
+    "last_reviewed": "2026-09-19"
+  },
+  {
+    "id": "UC-41",
+    "rank": 41,
+    "title": "Stale knowledge-base curator",
+    "category": "Knowledge",
+    "trigger": "Review-date changes",
+    "output": "Draft refreshed guides from approved sources",
+    "guardrail": "Keep old source provenance; no silent replacement",
+    "source_ids": [
+      "L3"
+    ],
+    "dependency": "events",
+    "status": "proposed",
+    "attribution": "Project proposal inspired by cited theme",
+    "acceptance": "Synthetic positive and negative fixtures prove: draft refreshed guides from approved sources; verify keep old source provenance; no silent replacement.",
+    "last_reviewed": "2026-09-19"
+  },
+  {
+    "id": "UC-42",
+    "rank": 42,
+    "title": "New-team onboarding guide",
+    "category": "Knowledge",
+    "trigger": "New project member request",
+    "output": "Build authorized reading order and glossary",
+    "guardrail": "Do not reveal inaccessible file names",
+    "source_ids": [
+      "L3"
+    ],
+    "dependency": "core",
+    "status": "proposed",
+    "attribution": "Project proposal inspired by cited theme",
+    "acceptance": "Synthetic positive and negative fixtures prove: build authorized reading order and glossary; verify do not reveal inaccessible file names.",
+    "last_reviewed": "2026-09-19"
+  },
+  {
+    "id": "UC-43",
+    "rank": 43,
+    "title": "Decision memory ledger",
+    "category": "Knowledge",
+    "trigger": "Approved meeting record",
+    "output": "Record decisions, owners and superseding evidence",
+    "guardrail": "Agent notes cannot self-promote to authority",
+    "source_ids": [
+      "L1"
+    ],
+    "dependency": "metadata",
+    "status": "proposed",
+    "attribution": "Project proposal inspired by cited theme",
+    "acceptance": "Synthetic positive and negative fixtures prove: record decisions, owners and superseding evidence; verify agent notes cannot self-promote to authority.",
+    "last_reviewed": "2026-09-19"
+  },
+  {
+    "id": "UC-44",
+    "rank": 44,
+    "title": "Multi-agent artifact handoff",
+    "category": "Platform",
+    "trigger": "One agent finishes work",
+    "output": "Write validated manifests for another agent to resume",
+    "guardrail": "Check version, ownership, schema and allowed actions",
+    "source_ids": [
+      "L1"
+    ],
+    "dependency": "core",
+    "status": "proposed",
+    "attribution": "Project proposal inspired by cited theme",
+    "acceptance": "Synthetic positive and negative fixtures prove: write validated manifests for another agent to resume; verify check version, ownership, schema and allowed actions.",
+    "last_reviewed": "2026-09-19"
+  },
+  {
+    "id": "UC-45",
+    "rank": 45,
+    "title": "Interrupted-run recovery",
+    "category": "Platform",
+    "trigger": "Restart or timeout",
+    "output": "Resume from verified checkpoints and reconcile writes",
+    "guardrail": "No duplicate outputs after uncertain responses",
+    "source_ids": [
+      "L1"
+    ],
+    "dependency": "events",
+    "status": "proposed",
+    "attribution": "Project proposal inspired by cited theme",
+    "acceptance": "Synthetic positive and negative fixtures prove: resume from verified checkpoints and reconcile writes; verify no duplicate outputs after uncertain responses.",
+    "last_reviewed": "2026-09-19"
+  },
+  {
+    "id": "UC-46",
+    "rank": 46,
+    "title": "Box AI evaluation bench",
+    "category": "Platform",
+    "trigger": "Model or agent change",
+    "output": "Compare extraction and citation accuracy on fixtures",
+    "guardrail": "Synthetic data and measured quality; no marketing extrapolation",
+    "source_ids": [
+      "L8"
+    ],
+    "dependency": "ai",
+    "status": "proposed",
+    "attribution": "Project proposal inspired by cited theme",
+    "acceptance": "Synthetic positive and negative fixtures prove: compare extraction and citation accuracy on fixtures; verify synthetic data and measured quality; no marketing extrapolation.",
+    "last_reviewed": "2026-09-19"
+  },
+  {
+    "id": "UC-47",
+    "rank": 47,
+    "title": "Metadata quality dashboard",
+    "category": "Metadata",
+    "trigger": "Recurring validation",
+    "output": "Measure completeness, invalid enums and conflicts",
+    "guardrail": "Limit report exposure and avoid sensitive field values",
+    "source_ids": [
+      "L5"
+    ],
+    "dependency": "metadata",
+    "status": "proposed",
+    "attribution": "Project proposal inspired by cited theme",
+    "acceptance": "Synthetic positive and negative fixtures prove: measure completeness, invalid enums and conflicts; verify limit report exposure and avoid sensitive field values.",
+    "last_reviewed": "2026-09-19"
+  },
+  {
+    "id": "UC-48",
+    "rank": 48,
+    "title": "Document workflow routing",
+    "category": "Operations",
+    "trigger": "New content arrival",
+    "output": "Propose destination and owner from approved rules",
+    "guardrail": "Moves can alter access; review first",
+    "source_ids": [
+      "L3"
+    ],
+    "dependency": "metadata",
+    "status": "proposed",
+    "attribution": "Project proposal inspired by cited theme",
+    "acceptance": "Synthetic positive and negative fixtures prove: propose destination and owner from approved rules; verify moves can alter access; review first.",
+    "last_reviewed": "2026-09-19"
+  },
+  {
+    "id": "UC-49",
+    "rank": 49,
+    "title": "Data-room diligence index",
+    "category": "Legal",
+    "trigger": "Approved transaction review",
+    "output": "Map questions to evidence across a document set",
+    "guardrail": "Access boundaries; no autonomous transaction decisions",
+    "source_ids": [
+      "L6"
+    ],
+    "dependency": "ai",
+    "status": "proposed",
+    "attribution": "Project proposal inspired by cited theme",
+    "acceptance": "Synthetic positive and negative fixtures prove: map questions to evidence across a document set; verify access boundaries; no autonomous transaction decisions.",
+    "last_reviewed": "2026-09-19"
+  },
+  {
+    "id": "UC-50",
+    "rank": 50,
+    "title": "Community connector compatibility watch",
+    "category": "Platform",
+    "trigger": "API or host change",
+    "output": "Re-run documented fixtures and propose fixes",
+    "guardrail": "No silent permission expansion or automatic releases",
+    "source_ids": [
+      "L8"
+    ],
+    "dependency": "core",
+    "status": "proposed",
+    "attribution": "Project proposal inspired by cited theme",
+    "acceptance": "Synthetic positive and negative fixtures prove: re-run documented fixtures and propose fixes; verify no silent permission expansion or automatic releases.",
+    "last_reviewed": "2026-09-19"
+  }
+]
