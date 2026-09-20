@@ -22,3 +22,6 @@ or personal account identifiers in issues, tests or screenshots.
 Contributions use the repository's MIT license. Be respectful, explain tradeoffs,
 and keep claims tied to evidence. Maintainer review is required before release;
 a merged research proposal is not a tested connector capability.
+
+For public copy, follow [the writing guide](COPY.md). Lead with the job and its
+evidence. Keep technical facts precise and community ownership clear.

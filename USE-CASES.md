@@ -1,8 +1,8 @@
 # Top 50 Box agent use cases
 
-Editorial build-priority ranking for Box for Muse and reusable Box agent tools. These are our proposals, not a list authored or endorsed by Aaron Levie. All are proposed, not implemented. Sources and limitations: [research notes](research/SOURCES.md).
+Fifty jobs we want agents to do well with Box. These are our proposed use cases, informed by Aaron Levie’s ideas and Box documentation. He did not write or endorse this list. None is claimed as implemented here. See the [research notes](research/SOURCES.md).
 
-Ranking favors useful content outcomes, reuse of core primitives, testability, and manageable permissions. Adjacent ranks are judgment calls, not measured ROI. Core is a dependency category, not a shipping claim.
+Start near the top: useful results, shared building blocks, and tests we can run. The order is our judgment, not measured ROI. Tell us which real problem deserves to move up. The core label describes the required tools, not a shipped feature.
 
 | Rank | Use case | Trigger → result | Essential boundary | Gate | Theme |
 | --- | --- | --- | --- | --- | --- |

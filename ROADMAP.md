@@ -20,7 +20,9 @@ operation contracts for other agents. This public repository begins with researc
    data flow, support and limitations; demonstrate the entire workflow in Muse.
 8. **Launch assets:** original icon, actual screenshots and captioned video after
    the depicted features work. Community ownership stays visible; no logo reuse
-   or implied endorsement. Directory requirements need direct verification.
+   or implied endorsement. Apply [the writing guide](COPY.md) to the whole demo
+   site, screenshots, captions, listing, and narration. Directory requirements
+   need direct verification.
 
 Issue milestones should track these gates, not just feature completion. A use case
 moves from proposed → specified → implemented → verified only with linked evidence.

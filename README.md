@@ -1,46 +1,59 @@
 # Box for Muse ♥
 
-**Built with love by Dan O'Leary. Built for everyone to help improve.**
+**Built with love by Dan O'Leary. Open for everyone to help build.**
 
-An independent community project exploring a great Box connector for Muse and
-reusable tools for agents working with Box. Dan is a Box and Meta alumnus. This
-project is not sponsored, endorsed or maintained by Box or Meta.
+I worked at Box and Meta. I care about both, and I wanted to build a useful way
+for Muse to work with the files people already keep in Box.
 
-The aim: agents that find trustworthy sources, understand changes, extract
-structured facts, and save useful work while respecting enterprise controls.
+Find the approved proposal. Explain what changed. Pull the dates out of a
+contract. Save a brief where your team can find it. Those are the kinds of jobs
+Box for Muse should do well.
 
-## What is available today
+This is my independent community project. It is not sponsored, endorsed, or
+maintained by Box or Meta.
 
-This repository publishes a **research-backed roadmap and contribution framework**,
-not an installable connector. The connector is being developed separately; no
-working code, production readiness or directory availability is claimed here.
+## Start here
 
-- [Top 50 use cases](USE-CASES.md), ranked for build priority.
-- [Source register](research/SOURCES.md), including Levie posts and attribution limits.
-- [Machine-readable catalog](data/use-cases.json).
-- [Roadmap and release gates](ROADMAP.md).
-- [How to contribute](CONTRIBUTING.md) and [maintenance process](MAINTENANCE.md).
+The [50-use-case roadmap](USE-CASES.md) is ready to explore and improve.
+The connector is still being built. There is no installable release in this
+repository yet.
 
-Start with approved-source briefs, project-change monitoring, reviewed metadata
-and contract obligations. Enterprise governance and security workflows follow
-explicit permission and entitlement checks. Box AI is optional and account-dependent.
+The first jobs I want to get right:
 
-## Everyone can contribute
+- **Find the right source.** Tell an approved document from a newer draft.
+- **Keep up with changes.** Notice what matters in a project folder and update its brief.
+- **Make documents searchable by their facts.** Extract useful fields, review them, and save them as metadata.
+- **Track commitments.** Find obligations and deadlines, with the source attached.
+- **Finish the work.** Save the result to the right Box folder and verify it arrived.
 
-Open an issue with a real workflow, a correction, an API change or a synthetic
-acceptance fixture. Send a pull request to improve the catalog or documentation.
-Use the issue forms to include sources, permission needs and a measurable outcome.
-Do not post customer documents, account identifiers, credentials or private logs.
+Every job needs clear permissions, useful errors, and evidence you can check.
+Box AI and enterprise administration need their own access and capability checks.
 
-The roadmap is openly available under the MIT license. Box/Muse accounts,
-app approval, API charges and product entitlements may still be needed to run the
-future connector. Open source does not make paid services free or guarantee access.
+## Bring a real problem
 
-## Local validation
+[Open an issue](https://github.com/danieloleary/box-for-muse/issues/new/choose).
+Tell us what you need done, what files it involves, and how you'd know it worked.
+A small fictional example helps more than a long feature list.
+
+Found a bad assumption or a better approach? Send a correction or pull request.
+Please keep customer files, credentials, and private logs out of public contributions.
+
+- [Research and sources](research/SOURCES.md): what Aaron Levie said, what we inferred, and what still needs checking.
+- [Build roadmap](ROADMAP.md): what has to work before release.
+- [Contributing](CONTRIBUTING.md): how to help.
+- [Keeping it current](MAINTENANCE.md): how changes get reviewed.
+- [Writing and demo copy](COPY.md): how this project should sound.
+- [Use-case data](data/use-cases.json): the catalog in JSON.
+
+The project uses the MIT license. Box and Muse accounts, API charges, and product
+entitlements may still be required. The goal is an open connector anyone can
+build on, with those requirements explained plainly.
+
+## Check a contribution
 
 ```sh
 python3 scripts/validate.py
 ```
 
-The validator checks catalog integrity and references. It does not prove Box API
-compatibility, governance enforcement or a working Muse installation.
+This checks the catalog and its references. A working connector needs tests in
+Muse too. We'll publish that evidence alongside the implementation.
