@@ -37,3 +37,43 @@ an author's session-specific link. Directory-provided setup remains unverified.
 Do not install `tests/`, test-only `sitecustomize.py`, or credential stubs into the
 runtime path. Follow Muse's approval controls. Do not automatically reconnect,
 reset, or revoke a grant in response to a 401 or 403.
+
+## Verify one clean-user read-only run
+
+This gate tests a fresh install and connected identity in Muse. Read-only refers
+to the commands in this run, not the permissions of the tested grant above.
+Do not grant new access just to make a failing check pass.
+
+Before the run, arrange a synthetic Box folder with two text files the tester
+can read: `Muse proof brief - APPROVED.txt` containing `Approved fee: USD 24000`,
+and a newer `Muse proof brief - DRAFT.txt` containing `Draft fee: USD 18000`.
+Have the fixture owner separately provide the ID of a third synthetic file that
+the tester cannot access. Use no real client files. In a new Muse test session,
+install the selected candidate and connect the tester's own approved Box account
+as described above.
+
+Run from the installed skill directory (replace the three ID placeholders):
+
+```sh
+python3 bin/box identity
+python3 bin/box search "Muse proof brief" --folder-id "<fixture-folder-id>"
+python3 bin/box get-file "<approved-file-id>"
+python3 bin/box read-file "<approved-file-id>" --text
+python3 bin/box read-file "<known-inaccessible-file-id>" --text
+```
+
+| Check | Pass criterion |
+| --- | --- |
+| Connected identity | Tester privately confirms it matches the account they connected. |
+| Scoped search | Both synthetic names appear inside the selected folder. If the files are newly created, allow for search indexing and retry; a folder listing can diagnose a miss but does not count as a search pass. |
+| Approved source | Read output contains `Approved fee: USD 24000` and supplies a source URL and a nonempty file version ID matching the approved file metadata. Muse reports the approved value and cites that version, rather than substituting the newer draft. |
+| Access boundary | The known-inaccessible read returns a controlled denial or not-found result and no content. An authentication failure, timeout, or unknown file ID does not count as a pass. |
+
+Record the candidate commit and artifact SHA-256, date, each check's pass/fail,
+and a sanitized explanation of failures on [roadmap issue #1](https://github.com/danieloleary/box-for-muse/issues/1)
+only if authorized to share it. Redact account identifiers, Box IDs, URLs, and
+raw logs from public evidence, even when private verification required checking
+them. Do not include setup links or credential details.
+
+This gate does not cover writes, save/readback, token refresh, or public
+directory approval.
